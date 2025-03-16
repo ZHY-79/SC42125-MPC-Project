@@ -307,3 +307,33 @@ ignored for bicycle models."
                 "steering": steering_pos,
             }
         }
+
+
+# def mpc_controller(pos, v, sigma, reference_traj, N, dt, L):
+#     Q = []
+#     R = []
+#     P = []
+
+#     cost = 0
+#     for i in range(N):
+
+#         x, y, theta = pos[0], pos[1], pos[2]
+#         x_ref, y_ref, theta_ref = reference_traj[i, 0], reference_traj[i, 1], reference_traj[i, 2]
+#         ref_idx = find_closest_reference_point(pos, reference_traj)
+        
+#         x_next_ref, y_next_ref, theta_next_ref = reference_traj[ref_idx, 0], reference_traj[ref_idx, 1], reference_traj[i+1, 2]
+#         v_ref, sigma_ref = calculate_vref_and_sigma(x_ref, y_ref, theta_ref, x_next_ref, y_next_ref, theta_next_ref, dt, L)
+       
+#         matrix_A_d = CalculateAMatrix(dt, v_ref, theta_ref)
+#         matrix_B_d = CalculateBMatrix(dt, v_ref, theta_ref, sigma_ref, L)
+        
+#         e_x = x - x_ref
+#         e_y = y - y_ref
+#         e_theta = theta - theta_ref
+
+#         e_k = np.array([e_x, e_y, e_theta])
+#         u_ek = np.array([v, sigma])
+
+#         cost += e_k.T @ Q @ e_k + u_ek.T @ P @ u_ek
+
+#         error_update = dynamicUpdate(matrix_A_d, matrix_B_d, e_k, u_ek)
