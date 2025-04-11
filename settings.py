@@ -14,16 +14,16 @@ def CoG_to_RearAxle(CoG_pos, dis=1.45):
 def force_axis_limits(ax):
     """强制坐标轴范围为-50到50"""
     # 设置坐标轴范围
-    ax.set_xlim(-50, 50)
-    ax.set_ylim(-50, 50)
+    ax.set_xlim(-50, 30)
+    ax.set_ylim(-30, 30)
     
     # 禁用自动缩放
     ax.set_autoscale_on(False)
     
     # 显式设置刻度位置
-    ticks = [-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50]
-    ax.set_xticks(ticks)
-    ax.set_yticks(ticks)
+    # ticks = [-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50]
+    # ax.set_xticks(ticks)
+    # ax.set_yticks(ticks)
     
     # 刷新图形
     ax.figure.canvas.draw()
@@ -44,8 +44,8 @@ def initialize_plot():
     ax.set_title('Vehicle Trajectory Tracking with MPC')
     
     # 添加坐标轴范围提示
-    ax.text(48, 48, '50x50', fontsize=12, ha='right', va='top', 
-           bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
+    # ax.text(-50, 30, '50x50', fontsize=12, ha='right', va='top', 
+           # bbox=dict(boxstyle='round', facecolor='white', alpha=0.7))
     
     return fig, ax
 
