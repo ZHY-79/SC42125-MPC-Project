@@ -1,16 +1,16 @@
-generate_direct_only: 给定起点，只生成直线。这个文件似乎没用到
+# MPC Project
 
-generate_curve_direct: 这个会生成一个直线(straight_line_trajectory.csv)，和对应的曲线文件(smooth_multi_point_traj.csv)
+Group members: Hongyu Zhou (6148123), Yuning Liu (6143237)
 
-generate_short_plot.py: 这个会生成一个自行车约束轨迹，我们最后不会用到其实
+```generate_curve_direct.py```: Generate a straight line saved in the ```straight_line_trajectory.csv``` and a corresponding smooth trajectory in ```smooth_multi_point_traj.csv```
 
+```sim_compare_Q.py```: Compare the performance of different Q. The results are saved in the folder ```compare_Q```
+```sim_compare_R.py```: Compare the performance of different R. The results are saved in the folder ```compare_R```
 
-sim_compare_Q.py: Compare the performance of different Q
-sim_compare_R.py: Compare the performance of different R
+```sim_origin_regulator.py```: The target is at the origin. There is no external trajectory file needed. 
 
-sim_origin_regulator_MPC: 终点在原点，不需要导入其他trajectory
-sim_one_straight_offset: 终点不在原点。此时没有trajectory文件导入，而是在sim文件内部生成
-sim_combination_straight_lines: 使用多条直线组合而成的轨迹，使用文件为straight_line_trajectory.csv
+```sim_one_straight_offset.py```: The target is not at the origin. There is no external trajectory file needed. 
 
-sim_smooth_fixed_ref: 使用smooth_multi_point_traj.csv的曲线轨迹，并且参考点固定且密集
+```sim_combination_straight_lines.py```: The trajectory is a combination of straight lines generated in the ```straight_line_trajectory.csv```, with the reference point fixed at the intersection of different straight lines. 
 
+```sim_smooth_fixed_ref.py```: The trajectory is the smooth one in the ```smooth_multi_point_traj.csv```, and the fixed reference points are dense. 
