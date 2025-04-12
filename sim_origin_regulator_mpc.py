@@ -1,10 +1,10 @@
 """
-恒速版Prius轨迹跟踪模拟。
-使用update_vehicle函数绘制车辆
-主要特点:
-1. 提供速度和角度控制接口
-2. 默认使用恒定速度
-3. 绘图范围固定为-50到50
+Constant Speed Prius Trajectory Tracking Simulation.
+Use update_vehicle function to render the vehicle
+Main features:
+1. Provides speed and angle control interface
+2. Uses constant speed by default
+3. Drawing range fixed at -50 to 50
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ from urdfenvs.urdf_common.urdf_env import UrdfEnv
 from bicycle_model_self import BicycleModelSelf
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrow, Polygon, Ellipse
-import casadi as ca  # 非线性数值优化求解器
+import casadi as ca  # Non-linear numerical optimization solver
 import pandas as pd
 from tqdm import tqdm
 import math
@@ -37,8 +37,8 @@ def is_in_terminal_set(P_matrix, state, radius):
     return float(quadratic_form) <= radius
 
 def create_single_point_trajectory():
-    """创建单点轨迹 [0,0,0]"""
-    trajectory = [[0, 0, 0]]  # 单点轨迹 [x, y, theta]
+    """Create a single point trajectory [0,0,0]"""
+    trajectory = [[0, 0, 0]]  # Single point trajectory [x, y, theta]
     x = trajectory[0][0]
     y = trajectory[0][1]
     theta = trajectory[0][1]
@@ -63,137 +63,137 @@ def CalculateBMatrix(dt, v_ref, theta_ref, sigma_ref, L):
 
 def dynamicUpdate(MatrixA, MatrixB, error_k, inputerror_k):
     """
-    更新离散时间动态系统的状态误差
+    Update the state error of a discrete-time dynamic system
     
-    参数:
-    MatrixA: 离散状态转移矩阵 A_d
-    MatrixB: 离散输入矩阵 B_d
-    error_k: 当前时刻的状态误差 [e_x, e_y, e_theta]
-    inputerror_k: 当前时刻的输入误差 [delta_v, delta_sigma]
+    Parameters:
+    MatrixA: Discrete state transition matrix A_d
+    MatrixB: Discrete input matrix B_d
+    error_k: Current state error [e_x, e_y, e_theta]
+    inputerror_k: Current input error [delta_v, delta_sigma]
     
-    返回:
-    error_k1: 下一时刻的状态误差 [e_x, e_y, e_theta]
+    Returns:
+    error_k1: Next state error [e_x, e_y, e_theta]
     """
-    # 确保输入是numpy数组
-    error_k = np.array(error_k).reshape(-1, 1)       # 转为列向量
-    inputerror_k = np.array(inputerror_k).reshape(-1, 1)  # 转为列向量
+    # Ensure inputs are numpy arrays
+    error_k = np.array(error_k).reshape(-1, 1)       # Convert to column vector
+    inputerror_k = np.array(inputerror_k).reshape(-1, 1)  # Convert to column vector
     
-    # 根据离散动态方程计算下一时刻的状态误差
+    # Calculate next state error based on discrete dynamic equation
     # e(k+1) = A_d * e(k) + B_d * δu(k)
     update_error = np.dot(MatrixA, error_k) + np.dot(MatrixB, inputerror_k)
     return update_error
 
 def mpc_controller(pos, reference_traj, N, dt, L, initial_state=None, v_ref=4, sigma_ref=0, Q=np.diag([1, 1, 1]), R=np.diag([1, 1])):
-    # 如果提供了初始状态，则使用它替代当前状态
+    # If initial state is provided, use it instead of current state
     if initial_state is not None:
         pos = initial_state
     
-    # 使用单点目标轨迹
+    # Use single point target trajectory
     x_ref, y_ref, theta_ref = reference_traj[0]
-    # 创建优化变量
-    delta_v = ca.SX.sym('delta_v', N)                                          # 速度偏差符号变量
-    delta_sigma = ca.SX.sym('delta_sigma', N)                                  # 转向角偏差符号变量
-    opt_vars = ca.vertcat(ca.reshape(delta_v, -1, 1), ca.reshape(delta_sigma, -1, 1))  # 构建优化向量
+    # Create optimization variables
+    delta_v = ca.SX.sym('delta_v', N)                                          # Velocity deviation symbolic variable
+    delta_sigma = ca.SX.sym('delta_sigma', N)                                  # Steering angle deviation symbolic variable
+    opt_vars = ca.vertcat(ca.reshape(delta_v, -1, 1), ca.reshape(delta_sigma, -1, 1))  # Build optimization vector
     
-    # 定义状态和控制权重
-    # Q = np.diag([1, 1, 1])                                               # 状态误差权重矩阵 [x, y, theta]
-    # R = np.diag([1, 1])                                                   # 控制偏差权重矩阵 [v, sigma]
-    A_d = CalculateAMatrix(dt, v_ref, theta_ref)                               # 状态转移矩阵
-    B_d = CalculateBMatrix(dt, v_ref, theta_ref, sigma_ref, L)                 # 控制输入矩阵
+    # Define state and control weights
+    # Q = np.diag([1, 1, 1])                                               # State error weight matrix [x, y, theta]
+    # R = np.diag([1, 1])                                                   # Control deviation weight matrix [v, sigma]
+    A_d = CalculateAMatrix(dt, v_ref, theta_ref)                               # State transition matrix
+    B_d = CalculateBMatrix(dt, v_ref, theta_ref, sigma_ref, L)                 # Control input matrix
                                                                              
     P = la.solve_discrete_are(A_d, B_d, Q, R)
     K = np.linalg.inv(R + B_d.T @ P @ B_d) @ (B_d.T @ P @ A_d) 
     u_feedback = - K @ pos
     # print(f'P {P}')
-    print(f'the max: eigen value: {np.max(np.linalg.eigvals(P))} the min: {np.min(np.linalg.eigvals(P))}')
-    beta = 100          # beta * 终端
+    print(f'The max eigenvalue: {np.max(np.linalg.eigvals(P))} the min: {np.min(np.linalg.eigvals(P))}')
+    beta = 15          # beta * terminal cost
     
-    # 计算初始状态误差
-    e_x = pos[0] - x_ref                                                       # 计算x方向误差
-    e_y = pos[1] - y_ref                                                       # 计算y方向误差
-    e_theta = pos[2] - theta_ref                                               # 计算航向角误差
+    # Calculate initial state error
+    e_x = pos[0] - x_ref                                                       # Calculate x-direction error
+    e_y = pos[1] - y_ref                                                       # Calculate y-direction error
+    e_theta = pos[2] - theta_ref                                               # Calculate heading angle error
     
-    # 归一化角度误差到 [-pi, pi]
-    while e_theta > np.pi: e_theta -= 2 * np.pi                                # 处理角度大于π的情况
-    while e_theta < -np.pi: e_theta += 2 * np.pi                               # 处理角度小于-π的情况
+    # Normalize angle error to [-pi, pi]
+    while e_theta > np.pi: e_theta -= 2 * np.pi                                # Handle angle > π case
+    while e_theta < -np.pi: e_theta += 2 * np.pi                               # Handle angle < -π case
     
-    cost = 0                                                                   # 初始化总成本
-    e_k = np.array([e_x, e_y, e_theta])                                        # 初始状态误差
+    cost = 0                                                                   # Initialize total cost
+    e_k = np.array([e_x, e_y, e_theta])                                        # Initial state error
     
-    # 保存最终预测状态误差，用于后续添加终端代价
+    # Save final predicted state error for terminal cost
     final_state_error = None
 
-    # 在整个预测horizon中使用固定的参考点和参考控制
+    # Use fixed reference point and reference control throughout prediction horizon
     for i in range(N):
-        # 计算状态和控制代价
-        state_cost = e_k @ Q @ e_k                                             # 状态误差加权二次型
-        u_k = np.array([delta_v[i], delta_sigma[i]])                           # 当前时刻控制偏差
-        control_cost = u_k @ R @ u_k                                           # 控制偏差加权二次型
-        stage_cost = state_cost + control_cost                                 # 当前时刻阶段代价
-        cost = cost + stage_cost                                               # 累加每个时刻的成本
+        # Calculate state and control costs
+        state_cost = e_k @ Q @ e_k                                             # State error weighted quadratic form
+        u_k = np.array([delta_v[i], delta_sigma[i]])                           # Current control deviation
+        control_cost = u_k @ R @ u_k                                           # Control deviation weighted quadratic form
+        stage_cost = state_cost + control_cost                                 # Current stage cost
+        cost = cost + stage_cost                                               # Add each stage cost to total
 
-        # 预测下一时刻状态误差
-        e_k = A_d @ e_k + B_d @ u_k                                            # 预测下一时刻状态误差
+        # Predict next state error
+        e_k = A_d @ e_k + B_d @ u_k                                            # Predict next state error
         
-        # 保存最终预测状态误差
+        # Save final predicted state error
         if i == N - 1:
             final_state_error = e_k
     
-    # 添加终端代价
+    # Add terminal cost
     terminal_cost = 0
     if final_state_error is not None:
-        terminal_cost = beta * final_state_error @ P @ final_state_error       # 终端状态误差加权二次型
-        cost = cost + terminal_cost                                            # 添加终端代价到总成本
+        terminal_cost = beta * final_state_error @ P @ final_state_error       # Terminal state error weighted quadratic form
+        cost = cost + terminal_cost                                            # Add terminal cost to total
     
-    # 定义和求解优化问题
-    nlp = {'x': opt_vars, 'f': cost}                                           # 定义非线性规划问题
+    # Define and solve optimization problem
+    nlp = {'x': opt_vars, 'f': cost}                                           # Define nonlinear programming problem
     
     opts = {
-        'ipopt.print_level': 0,                                                # 抑制IPOPT输出
-        'ipopt.max_iter': 30,                                                  # 最大迭代次数
-        'ipopt.tol': 1e-4,                                                     # 收敛容差
-        'ipopt.acceptable_tol': 1e-4,                                          # 可接受的容差
-        'print_time': 0                                                        # 不打印计算时间
+        'ipopt.print_level': 0,                                                # Suppress IPOPT output
+        'ipopt.max_iter': 30,                                                  # Maximum iterations
+        'ipopt.tol': 1e-4,                                                     # Convergence tolerance
+        'ipopt.acceptable_tol': 1e-4,                                          # Acceptable tolerance
+        'print_time': 0                                                        # Don't print computation time
     }
     
-    solver = ca.nlpsol('solver', 'ipopt', nlp, opts)                           # 创建IPOPT求解器实例
+    solver = ca.nlpsol('solver', 'ipopt', nlp, opts)                           # Create IPOPT solver instance
     
-    # 设置优化边界
-    lbx = []                                                                   # 下界列表
-    ubx = []                                                                   # 上界列表
-    
-    for _ in range(N):
-        lbx.extend([-1.0])                                                     # 最小速度偏差
-        ubx.extend([1.0])                                                      # 最大速度偏差
+    # Set optimization bounds
+    lbx = []                                                                   # Lower bounds list
+    ubx = []                                                                   # Upper bounds list
     
     for _ in range(N):
-        lbx.extend([-0.3])                                                     # 最小转向角偏差
-        ubx.extend([0.3])                                                      # 最大转向角偏差
+        lbx.extend([-1.0])                                                     # Minimum velocity deviation
+        ubx.extend([1.0])                                                      # Maximum velocity deviation
     
-    # 求解优化问题并提取结果
+    for _ in range(N):
+        lbx.extend([-0.5])                                                     # Minimum steering angle deviation
+        ubx.extend([0.5])                                                      # Maximum steering angle deviation
+    
+    # Solve optimization problem and extract results
     optimal_cost = None
 
-    sol = solver(x0=np.zeros(2*N), lbx=lbx, ubx=ubx)                           # 求解优化问题
-    opt_sol = sol['x'].full().flatten()                                        # 提取优化结果
-    optimal_cost = float(sol['f'])                                             # 提取最优代价值
+    sol = solver(x0=np.zeros(2*N), lbx=lbx, ubx=ubx)                           # Solve optimization problem
+    opt_sol = sol['x'].full().flatten()                                        # Extract optimization results
+    optimal_cost = float(sol['f'])                                             # Extract optimal cost value
         
-    optimal_delta_v = opt_sol[0]                                               # 提取速度偏差
-    optimal_delta_sigma = opt_sol[N]                                           # 提取转向角偏差
+    optimal_delta_v = opt_sol[0]                                               # Extract velocity deviation
+    optimal_delta_sigma = opt_sol[N]                                           # Extract steering angle deviation
         
-    # 应用优化结果计算最终控制输入
-    v_optimal = v_ref + optimal_delta_v                                        # 参考速度加偏差
-    sigma_optimal = sigma_ref + optimal_delta_sigma                            # 参考转向角加偏差
+    # Apply optimization results to calculate final control inputs
+    v_optimal = v_ref + optimal_delta_v                                        # Reference velocity plus deviation
+    sigma_optimal = sigma_ref + optimal_delta_sigma                            # Reference steering angle plus deviation
         
-    # 计算实际使用的输入的阶段代价 (使用实际delta_v和delta_sigma)
-    u_actual = np.array([optimal_delta_v, optimal_delta_sigma])                # 实际输入偏差
-    actual_control_cost = u_actual @ R @ u_actual                              # 实际控制代价
-    actual_stage_cost = (e_x**2 * Q[0,0] + e_y**2 * Q[1,1] + e_theta**2 * Q[2,2]) + actual_control_cost  # 实际阶段代价
+    # Calculate actual stage cost (using actual delta_v and delta_sigma)
+    u_actual = np.array([optimal_delta_v, optimal_delta_sigma])                # Actual input deviation
+    actual_control_cost = u_actual @ R @ u_actual                              # Actual control cost
+    actual_stage_cost = (e_x**2 * Q[0,0] + e_y**2 * Q[1,1] + e_theta**2 * Q[2,2]) + actual_control_cost  # Actual stage cost
     
-    # 计算当前状态的终端代价 V_f(x)
+    # Calculate current state terminal cost V_f(x)
     current_error = np.array([e_x, e_y, e_theta])
     current_terminal_cost = beta * current_error @ P @ current_error
     
-    # 计算下一状态的终端代价 V_f(f(x,u))
+    # Calculate next state terminal cost V_f(f(x,u))
     next_error = A_d @ current_error + B_d @ u_actual
     next_terminal_cost = beta * next_error @ P @ next_error
 
@@ -251,14 +251,14 @@ def plot_inputs_and_errors(time_points, velocity_inputs, steering_inputs,
     fig3.savefig("origin_imgs/mpc_tracking_errors_single_point.png", bbox_inches='tight')
 
 def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np.diag([1, 1, 1]), R=np.diag([1, 1])):
-    # 使用单点轨迹
+    # Use single point trajectory
     trajectory, ref_x, ref_y, theta_ref = create_single_point_trajectory()
     
-    # 设置最大步数
-    n_steps = 1000  # 由于只有一个目标点，限制最大步数
+    # Set maximum steps
+    n_steps = 1000  # Limit maximum steps since we only have one target point
     print(f"Maximum steps: {n_steps}")
     
-    # 设置机器人
+    # Set up robot
     robots = [
         BicycleModelSelf(
             urdf='prius.urdf',
@@ -273,23 +273,23 @@ def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np
         )
     ]
 
-    # 创建环境
+    # Create environment
     env = UrdfEnv(dt=dt, robots=robots, render=False)
     
-    # 设置可视化
+    # Set up visualization
     fig1, ax1 = initialize_main_plot()
     
-    # 绘制参考轨迹点
-    x_points = [-12,0]  # x坐标列表
-    y_points = [0, 0]  # y坐标列表
+    # Draw reference trajectory point
+    x_points = [-12,0]  # x-coordinate list
+    y_points = [0, 0]  # y-coordinate list
 
-    # 画出连接这两个点的线
+    # Draw line connecting these two points
     
     ax1.plot(ref_x, ref_y, 'go', markersize=8, label='Target Point')
     ax1.legend()
     ax1.plot(x_points, y_points, label="Reference Trajectory")
     ax1.set_ylim([-10, 10])
-    # 设置起始点
+    # Set starting point
     if custom_start_pos is not None:
         if len(custom_start_pos) >= 3:
             pos0 = np.array([custom_start_pos[0], custom_start_pos[1], custom_start_pos[2], 0.0])
@@ -302,23 +302,23 @@ def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np
     print(f"Start: X={pos0[0]:.2f}, Y={pos0[1]:.2f}, Theta={pos0[2]:.2f}")
     print(f"Target: X={trajectory[0][0]:.2f}, Y={trajectory[0][1]:.2f}")
     
-    # 在地图上标记起始点
+    # Mark starting point on the map
     ax1.plot(pos0[0], pos0[1], 'mo', markersize=8, label='Vehicle Start')
     ax1.legend()
     
-    # 重置仿真
+    # Reset simulation
     ob = env.reset(pos=pos0[0:3])
     
-    # 跟踪轨迹
+    # Track trajectory
     actual_x = [pos0[0]]
     actual_y = [pos0[1]]
     
     action = np.array([0.0, 0.0])
     
-    # 可视化更新间隔
+    # Visualization update interval
     update_interval = 5
     
-    # 用于记录数据的列表
+    # Lists for recording data
     time_points = []
     velocity_inputs = []
     steering_inputs = []
@@ -326,45 +326,45 @@ def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np
     error_y_list = []
     error_theta_list = []
     
-    # 记录均方根位置误差和输入误差
+    # Record root mean square position error and input error
     rmse_list = []
     velocity_error_list = []
     steering_error_list = []
     
-    # 记录终端代价差和负阶段代价，用于验证 V_f(f(x,u))-V_f(x) <= -stage_cost
+    # Record terminal cost difference and negative stage cost, to verify V_f(f(x,u))-V_f(x) <= -stage_cost
     terminal_cost_decrease_list = []  # V_f(f(x,u))-V_f(x)
     negative_stage_cost_list = []     # -stage_cost
     
-    # 终端集合参数
-    terminal_P = None  # 将从MPC控制器获取
+    # Terminal set parameters
+    terminal_P = None  # Will be obtained from MPC controller
     terminal_radius = 5
     
-    # 记录P的特征值
+    # Record P eigenvalues
     min_eigen_P = np.inf
     max_eigen_P = 0
 
     with tqdm(total=n_steps, desc="Progress") as progress_bar:
         for i in range(n_steps):
-            # 步进仿真
+            # Step simulation
             ob, _, terminated, _, _ = env.step(action)
             sigma_ref = 0
             pos = ob['robot_0']['joint_state']['position']
             pos = CoG_to_RearAxle(pos)
             
-            # 跟踪实际轨迹
+            # Track actual trajectory
             actual_x.append(pos[0])
             actual_y.append(pos[1])
             
-            # 计算时间点
+            # Calculate time point
             current_time = i * dt
             time_points.append(current_time)
             
-            # 使用修改后的MPC控制器，现在返回当前终端代价和下一步终端代价
+            # Use modified MPC controller, now returns current terminal cost and next step terminal cost
             velocity, steering_angle, optimal_cost, stage_cost, current_terminal_cost, next_terminal_cost, P_matrix = mpc_controller(
                 pos, trajectory, N, dt, 4.6, v_ref=v_ref, sigma_ref=0, Q=Q, R=R
             )
             
-            # 第一次迭代时保存P矩阵
+            # Save P matrix on first iteration
             if i == 0 and terminal_P is None:
                 terminal_P = P_matrix
             
@@ -373,73 +373,73 @@ def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np
             eigen_v = np.linalg.eigvals(terminal_P)
             min_eigen_P = min(min_eigen_P, np.min(eigen_v))
             max_eigen_P = max(max_eigen_P, np.max(eigen_v))
-            # 计算终端代价差值 V_f(f(x,u))-V_f(x)
+            # Calculate terminal cost difference V_f(f(x,u))-V_f(x)
             terminal_cost_decrease = next_terminal_cost - current_terminal_cost
             
             print(is_in_terminal_set(terminal_P, pos, terminal_radius))
-            # 计算负阶段代价
+            # Calculate negative stage cost
             negative_stage_cost = -stage_cost
             
             
-            # 检测是否在终端集合内
+            # Check if in terminal set
             if terminal_P is not None and is_in_terminal_set(terminal_P, pos, radius=terminal_radius):
                 print(f"V_f(f(x,u))-V_f(x) = {terminal_cost_decrease:.6f}, -stage_cost = {negative_stage_cost:.6f}")
                 print(f"Condition satisfied: {terminal_cost_decrease <= negative_stage_cost}")
                 terminal_cost_decrease_list.append(terminal_cost_decrease)
                 negative_stage_cost_list.append(negative_stage_cost)
             
-            # 记录控制输入
+            # Record control inputs
             velocity_inputs.append(velocity)
             steering_inputs.append(steering_angle)
             
-            # 计算误差 - 固定目标为原点 (0,0,0)
+            # Calculate error - fixed target at origin (0,0,0)
             error_x = pos[0] - trajectory[0][0]
             error_y = pos[1] - trajectory[0][1]
             error_theta = pos[2] - trajectory[0][2]
             
-            # 计算均方根位置误差
+            # Calculate root mean square position error
             rmse = np.sqrt(error_x**2 + error_y**2)
             rmse_list.append(rmse)
             
-            # 计算输入误差
+            # Calculate input error
             velocity_error = velocity - v_ref
             steering_error = steering_angle - sigma_ref
             velocity_error_list.append(velocity_error)
             steering_error_list.append(steering_error)
             
-            # 规范化航向角误差到 [-pi, pi]
+            # Normalize heading angle error to [-pi, pi]
             while error_theta > np.pi:
                 error_theta -= 2 * np.pi
             while error_theta < -np.pi:
                 error_theta += 2 * np.pi
                 
-            # 记录误差
+            # Record errors
             error_x_list.append(error_x)
             error_y_list.append(error_y)
             error_theta_list.append(error_theta)
             
-            # 设置下一步动作
+            # Set next action
             action = np.array([velocity, steering_angle])
            
-            # 更新可视化
+            # Update visualization
             if i % update_interval == 0:
-                # 使用update_vehicle函数绘制车辆
+                # Use update_vehicle function to draw the vehicle
                 update_vehicle(ax1, pos)
                 
-                # 绘制轨迹
+                # Draw trajectory
                 if len(actual_x) > update_interval:
                     ax1.plot(actual_x[-update_interval:], actual_y[-update_interval:], 'b-', linewidth=1.5)
                 else:
                     ax1.plot(actual_x, actual_y, 'b-', linewidth=1.5)
                 
-                # 更新主图形
+                # Update main figure
                 fig1.canvas.draw_idle()
                 plt.pause(0.001)
             
-            # 更新进度条
+            # Update progress bar
             progress_bar.update(1)
             
-            # 检查成功条件
+            # Check success condition
             dist_to_end = np.sqrt((pos[0]-trajectory[0][0])**2 + (pos[1]-trajectory[0][1])**2)
             print(dist_to_end)
             if dist_to_end < 0.01 or velocity<=0.001: #  and abs(pos[2]-trajectory[0][2]) < 0.1:
@@ -448,28 +448,28 @@ def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np
                 update_vehicle(ax1, pos)
                 ax1.legend()
                 
-                # 保存轨迹图
+                # Save trajectory figure
                 fig1.savefig("origin_imgs/mpc_trajectory_single_point.png", bbox_inches='tight')
                 
-                # 创建并保存输入图
+                # Create and save input figures
                 plot_inputs_and_errors(time_points, velocity_inputs, steering_inputs, 
                                       error_x_list, error_y_list, error_theta_list)
-                print(f'The max eigen value of P is {max_eigen_P}, the min eigen value of P is {min_eigen_P}')
+                print(f'The max eigenvalue of P is {max_eigen_P}, the min eigenvalue of P is {min_eigen_P}')
                 env.close()
                 return True, rmse_list, error_x_list, error_y_list, error_theta_list, [velocity_error_list, steering_error_list], terminal_cost_decrease_list, negative_stage_cost_list
             
             if terminated:
                 break
     
-    # 最终可视化
+    # Final visualization
     ax1.plot(actual_x, actual_y, 'b-', linewidth=1.5, label='Actual Path')
     ax1.legend()
     
-    # 保存轨迹图
+    # Save trajectory figure
     fig1.savefig("origin_imgs/mpc_trajectory_single_point.png", bbox_inches='tight')
     
     
-    # 创建并保存输入图
+    # Create and save input figures
     plot_inputs_and_errors(time_points, velocity_inputs, steering_inputs, 
                           error_x_list, error_y_list, error_theta_list)
     
@@ -480,29 +480,29 @@ def run_prius_with_controller(v_ref=4, dt=0.1, N=30, custom_start_pos=None, Q=np
 if __name__ == "__main__":
     print('Running simulation to target point [0,0,0] with different prediction horizons N')
 
-    initial_pos = [-10, -3, 0.0]        # 设定初始位置
-    N_values = [1, 3, 5, 10]       # 测试不同的N值
+    initial_pos = [-15, -4, 0]        # Set initial position
+    N_values = [1]       # Test different N values
     gain_Q = 1
     gain_P = 1
-    Q = gain_Q * np.diag([5, 5, 5])   # 状态误差权重矩阵 [x, y, theta]
-    R = gain_P * np.diag([3, 3])      # 控制输入权重矩阵
+    Q = gain_Q * np.diag([5, 5, 5])   # State error weight matrix [x, y, theta]
+    R = gain_P * np.diag([3, 3])      # Control input weight matrix
     
-    # 存储不同N值的结果
+    # Store results for different N values
     results = {}
     
-    # 对每个N值运行仿真
+    # Run simulation for each N value
     for N in N_values:
         print(f"Running simulation with N = {N}")
         success, state_error, error_x_list, error_y_list, error_theta_list, [velocity_error, sigma_error], cost_decrease_list, minus_stage_cost = run_prius_with_controller(
             v_ref=0.01,
-            dt=0.05,                     # 仿真时间步长 (s)
+            dt=0.05,                     # Simulation time step (s)
             N=N,
             custom_start_pos=initial_pos,
             Q=Q,
             R=R
         )
         
-        # 存储结果
+        # Store results
         results[N] = {
             'success': success,
             'error_x': error_x_list,
@@ -515,14 +515,14 @@ if __name__ == "__main__":
         print(f"Simulation with N = {N}: {'Success' if success else 'Incomplete'}")
         print(f"Data length for N = {N}: {len(error_x_list)} steps")
     
-    # 创建三个独立的图表，每个图表绘制一个状态变量的误差
+    # Create three separate charts, each plotting the error of one state variable
     fig, axs = plt.subplots(3, 1, figsize=(12, 12))
     
-    # 设置颜色和线型，使图形更容易区分
+    # Set colors and line styles to make graphs easier to distinguish
     colors = ['b', 'r', 'g', 'purple']
     line_styles = ['-', '--', ':', '-.']
     
-    # 绘制x误差子图
+    # Plot x error subplot
     for i, N in enumerate(N_values):
         time_steps_N = range(len(results[N]['error_x']))
         axs[0].plot(time_steps_N, results[N]['error_x'], 
@@ -534,7 +534,7 @@ if __name__ == "__main__":
     axs[0].grid(True)
     axs[0].legend()
     
-    # 绘制y误差子图
+    # Plot y error subplot
     for i, N in enumerate(N_values):
         time_steps_N = range(len(results[N]['error_y']))
         axs[1].plot(time_steps_N, results[N]['error_y'], 
@@ -546,7 +546,7 @@ if __name__ == "__main__":
     axs[1].grid(True)
     axs[1].legend()
     
-    # 绘制theta误差子图
+    # Plot theta error subplot
     for i, N in enumerate(N_values):
         time_steps_N = range(len(results[N]['error_theta']))
         axs[2].plot(time_steps_N, results[N]['error_theta'], 
@@ -559,16 +559,16 @@ if __name__ == "__main__":
     axs[2].grid(True)
     axs[2].legend()
     
-    # 调整子图之间的间距
+    # Adjust spacing between subplots
     plt.tight_layout()
     
-    # 保存图形
+    # Save figure
     plt.savefig("origin_imgs/state_errors_comparison.png", bbox_inches='tight')
     
-    # 显示图形
+    # Show figure
     plt.show()
     
-    # 绘制代价函数图
+    # Plot cost function graph
     plt.figure(figsize=(10, 6))
     plt.plot(cost_decrease_list, drawstyle='steps', label=r"$V_f(f(x, k_x))-V_f(x, k_x)$")
     plt.plot(minus_stage_cost, drawstyle='steps', label=r"$-l(x, u)$")
